@@ -1,7 +1,7 @@
-import { Category } from './category';
-import { Price } from './price';
-import { Product } from '../entities/product';
-import { FilterCriterion, CategoryFilterCriterion, PriceFilterCriterion, StockFilterCriterion } from '../criteria';
+import { Category } from './category.value-object';
+import { Price } from './price.value-object';
+import { Product } from '../entities/product.entity';
+import { FilterCriterion, CategoryFilterCriterion, PriceFilterCriterion, StockFilterCriterion } from '../criteria/filter-criterion.interface';
 
 export class ProductFilter {
   private readonly _categories: Category[];

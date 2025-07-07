@@ -1,15 +1,14 @@
 {
   "name": "speci-filter",
   "version": "1.0.0",
-  "description": "Product filtering system using DDD and TDD",
+  "description": "Product filtering system using DDD",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "dev": "ts-node src/main.ts",
-    "start": "node dist/main.js"
+    "dev": "ts-node src/main.ts"
   },
   "devDependencies": {
     "@types/jest": "^29.5.0",
