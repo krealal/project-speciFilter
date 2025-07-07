@@ -1,15 +1,20 @@
 import { Category } from './category';
 import { Price } from './price';
+import { Product } from '../entities/product';
+import { FilterCriterion, CategoryFilterCriterion, PriceFilterCriterion, StockFilterCriterion } from '../criteria';
 
 export class ProductFilter {
   private readonly _categories: Category[];
   private readonly _minPrice?: Price;
   private readonly _maxPrice?: Price;
+  private readonly _hasStock?: boolean;
+  private readonly _criteria: FilterCriterion[];
 
   constructor(
     categories: Category[] = [],
     minPrice?: Price,
-    maxPrice?: Price
+    maxPrice?: Price,
+    hasStock?: boolean
   ) {
     if (minPrice && maxPrice && minPrice.greaterThan(maxPrice)) {
       throw new Error('Min price cannot be greater than max price');
@@ -18,6 +23,9 @@ export class ProductFilter {
     this._categories = [...categories];
     this._minPrice = minPrice;
     this._maxPrice = maxPrice;
+    this._hasStock = hasStock;
+
+    this._criteria = this._buildCriteria();
   }
 
   get categories(): Category[] {
@@ -32,8 +40,34 @@ export class ProductFilter {
     return this._maxPrice;
   }
 
+  get hasStock(): boolean | undefined {
+    return this._hasStock;
+  }
+
   isEmpty(): boolean {
-    return this._categories.length === 0 && !this._minPrice && !this._maxPrice;
+    return this._categories.length === 0 && !this._minPrice && !this._maxPrice && this._hasStock === undefined;
+  }
+
+  matches(product: Product): boolean {
+    return this._criteria.every(criterion => criterion.matches(product));
+  }
+
+  private _buildCriteria(): FilterCriterion[] {
+    const criteria: FilterCriterion[] = [];
+
+    if (this._categories.length > 0) {
+      criteria.push(new CategoryFilterCriterion(this._categories));
+    }
+
+    if (this._minPrice || this._maxPrice) {
+      criteria.push(new PriceFilterCriterion(this._minPrice, this._maxPrice));
+    }
+
+    if (this._hasStock !== undefined) {
+      criteria.push(new StockFilterCriterion(this._hasStock));
+    }
+
+    return criteria;
   }
 
   hasCategoryFilter(): boolean {
@@ -42,6 +76,10 @@ export class ProductFilter {
 
   hasPriceFilter(): boolean {
     return this._minPrice !== undefined || this._maxPrice !== undefined;
+  }
+
+  hasStockFilter(): boolean {
+    return this._hasStock !== undefined;
   }
 
   matchesCategory(category: Category): boolean {
@@ -77,6 +115,7 @@ export class ProductFilterBuilder {
   private _categories: Category[] = [];
   private _minPrice?: Price;
   private _maxPrice?: Price;
+  private _hasStock?: boolean;
 
   withCategories(categories: Category[]): ProductFilterBuilder {
     this._categories = [...categories];
@@ -99,7 +138,22 @@ export class ProductFilterBuilder {
     return this;
   }
 
+  withStockFilter(hasStock: boolean): ProductFilterBuilder {
+    this._hasStock = hasStock;
+    return this;
+  }
+
+  withInStockOnly(): ProductFilterBuilder {
+    this._hasStock = true;
+    return this;
+  }
+
+  withOutOfStockOnly(): ProductFilterBuilder {
+    this._hasStock = false;
+    return this;
+  }
+
   build(): ProductFilter {
-    return new ProductFilter(this._categories, this._minPrice, this._maxPrice);
+    return new ProductFilter(this._categories, this._minPrice, this._maxPrice, this._hasStock);
   }
 } 

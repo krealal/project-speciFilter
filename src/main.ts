@@ -1,118 +1,80 @@
-import { ProductFilterService } from './application/use-cases/product-filter-service';
-import { InMemoryProductRepository } from './infrastructure/repositories/in-memory-product-repository';
-import { Product } from './domain/entities/product';
-import { Category } from './domain/value-objects/category';
-import { Price } from './domain/value-objects/price';
-import { ProductFilter } from './domain/value-objects/product-filter';
+import { ProductService } from './ProductService';
+import { Product } from './Product';
+import { ProductFilter } from './ProductFilter';
 
-/**
- * Demostración del sistema de filtrado de productos de TheRefactorShop
- * Implementado usando DDD (Domain-Driven Design) y TDD (Test-Driven Development)
- */
 async function main() {
   console.log('🏪 Sistema de Filtrado de Productos - TheRefactorShop');
+  console.log('📐 Patrones utilizados: Builder + Chain/Strategy');
   console.log('='.repeat(55));
 
-  // Crear el catálogo de productos según el enunciado
   const products = [
-    new Product(
-      '3',
-      'Apple',
-      new Price(0.99),
-      [new Category('food'), new Category('free-shipping')],
-      true
-    ),
-    new Product(
-      '1',
-      'Banana',
-      new Price(1.50),
-      [new Category('food')],
-      false
-    ),
-    new Product(
-      '2',
-      'T-Shirt',
-      new Price(15.99),
-      [new Category('clothes'), new Category('new')],
-      true
-    ),
-    new Product(
-      '4',
-      'Shampoo',
-      new Price(8.50),
-      [new Category('toiletries'), new Category('offer')],
-      true
-    ),
-    new Product(
-      '5',
-      'Limited Watch',
-      new Price(299.99),
-      [new Category('limited-edition')],
-      false
-    )
+    new Product('3', 'Apple', 0.99, ['food', 'free-shipping'], true),
+    new Product('1', 'Banana', 1.50, ['food'], false),
+    new Product('2', 'T-Shirt', 15.99, ['clothes', 'new'], true),
+    new Product('4', 'Shampoo', 8.50, ['toiletries', 'offer'], true),
+    new Product('5', 'Limited Watch', 299.99, ['limited-edition'], false)
   ];
 
-  // Configurar el sistema
-  const repository = new InMemoryProductRepository(products);
-  const filterService = new ProductFilterService(repository);
+  const productService = new ProductService(products);
 
   console.log('\n📦 Catálogo de productos disponibles:');
-  const allProducts = await filterService.getAllProducts();
+  const allProducts = productService.getAllProducts();
   allProducts.forEach(product => {
     const stockStatus = product.hasStock ? '✅ En stock' : '❌ Sin stock';
-    const categories = product.categories.map(c => c.value).join(', ');
-    console.log(`  ${product.name} - €${product.price.value} [${categories}] ${stockStatus}`);
+    const categories = product.categories.join(', ');
+    console.log(`  ${product.name} - €${product.price} [${categories}] ${stockStatus}`);
   });
 
   console.log('\n🔍 Ejemplos de filtrado:');
   console.log('-'.repeat(30));
 
-  // Ejemplo 1: Filtrar solo por categoría
-  console.log('\n1️⃣ Filtrar productos de comida:');
-  const foodFilter = new ProductFilter([new Category('food')]);
-  const foodProducts = await filterService.filterProducts(foodFilter);
+  // Ejemplo 1: Filtrar por categoría usando constructor directo
+  console.log('\n1️⃣ Filtrar productos de comida (Constructor directo):');
+  const foodFilter = new ProductFilter(['food']);
+  const foodProducts = productService.filterProducts(foodFilter);
   foodProducts.forEach(product => {
     const stockStatus = product.hasStock ? '✅' : '❌';
-    console.log(`  ${stockStatus} ${product.name} - €${product.price.value}`);
+    console.log(`  ${stockStatus} ${product.name} - €${product.price}`);
   });
 
-  // Ejemplo 2: Filtrar solo por rango de precio
-  console.log('\n2️⃣ Filtrar productos entre €1.00 y €10.00:');
-  const priceFilter = new ProductFilter([], new Price(1.00), new Price(10.00));
-  const priceRangeProducts = await filterService.filterProducts(priceFilter);
+  // Ejemplo 2: Filtrar por precio usando Builder pattern
+  console.log('\n2️⃣ Filtrar productos entre €1.00 y €10.00 (Builder Pattern):');
+  const priceFilter = ProductFilter.builder()
+    .withPriceRange(1.00, 10.00)
+    .build();
+  const priceRangeProducts = productService.filterProducts(priceFilter);
   priceRangeProducts.forEach(product => {
     const stockStatus = product.hasStock ? '✅' : '❌';
-    console.log(`  ${stockStatus} ${product.name} - €${product.price.value}`);
+    console.log(`  ${stockStatus} ${product.name} - €${product.price}`);
   });
 
-  // Ejemplo 3: Combinar categoría y precio
-  console.log('\n3️⃣ Filtrar comida barata (< €2.00):');
-  const combinedFilter = new ProductFilter(
-    [new Category('food')], 
-    undefined, 
-    new Price(2.00)
-  );
-  const combinedResults = await filterService.filterProducts(combinedFilter);
+  // Ejemplo 3: Combinar múltiples criterios usando Builder
+  console.log('\n3️⃣ Filtrar comida barata (< €2.00) usando Builder:');
+  const combinedFilter = ProductFilter.builder()
+    .withCategories(['food'])
+    .withMaxPrice(2.00)
+    .build();
+  const combinedResults = productService.filterProducts(combinedFilter);
   combinedResults.forEach(product => {
     const stockStatus = product.hasStock ? '✅' : '❌';
-    console.log(`  ${stockStatus} ${product.name} - €${product.price.value}`);
+    console.log(`  ${stockStatus} ${product.name} - €${product.price}`);
   });
 
   // Ejemplo 4: Filtro que no coincide con nada
   console.log('\n4️⃣ Filtrar comida cara (> €50.00):');
-  const expensiveFoodFilter = new ProductFilter(
-    [new Category('food')], 
-    new Price(50.00)
-  );
-  const expensiveFood = await filterService.filterProducts(expensiveFoodFilter);
+  const expensiveFoodFilter = ProductFilter.builder()
+    .withCategories(['food'])
+    .withMinPrice(50.00)
+    .build();
+  const expensiveFood = productService.filterProducts(expensiveFoodFilter);
   if (expensiveFood.length === 0) {
     console.log('  📭 No se encontraron productos que coincidan con el filtro');
   }
 
-  // Ejemplo 5: Sin filtro (todos los productos)
+  // Ejemplo 5: Sin filtro aplicado
   console.log('\n5️⃣ Sin filtro aplicado (todos los productos):');
   const noFilter = new ProductFilter();
-  const allFilteredProducts = await filterService.filterProducts(noFilter);
+  const allFilteredProducts = productService.filterProducts(noFilter);
   console.log(`  📋 Total de productos: ${allFilteredProducts.length}`);
   console.log('  🏆 Productos con stock aparecen primero:');
   allFilteredProducts.forEach((product, index) => {
@@ -120,31 +82,71 @@ async function main() {
     console.log(`    ${index + 1}. ${stockStatus} ${product.name}`);
   });
 
-  // Demostrar el patrón builder
-  console.log('\n6️⃣ Usando el patrón Builder:');
+  // Ejemplo 6: Demostrar Builder pattern con métodos fluidos
+  console.log('\n6️⃣ Builder pattern con métodos fluidos:');
   const builderFilter = ProductFilter.builder()
-    .withCategories([new Category('clothes'), new Category('toiletries')])
-    .withMinPrice(new Price(5.00))
+    .withCategories(['clothes', 'toiletries'])
+    .withMinPrice(5.00)
     .build();
-  const builderResults = await filterService.filterProducts(builderFilter);
+  const builderResults = productService.filterProducts(builderFilter);
   builderResults.forEach(product => {
     const stockStatus = product.hasStock ? '✅' : '❌';
-    const categories = product.categories.map(c => c.value).join(', ');
-    console.log(`  ${stockStatus} ${product.name} - €${product.price.value} [${categories}]`);
+    const categories = product.categories.join(', ');
+    console.log(`  ${stockStatus} ${product.name} - €${product.price} [${categories}]`);
   });
 
-  console.log('\n✨ Características implementadas:');
-  console.log('  • Filtrado por categoría individual o múltiple');
-  console.log('  • Filtrado por rango de precios (min, max, o ambos)');
-  console.log('  • Combinación de filtros de categoría y precio');
-  console.log('  • Ordenamiento automático: productos con stock primero');
-  console.log('  • Validación de categorías según especificación');
-  console.log('  • Arquitectura DDD con separación de responsabilidades');
-  console.log('  • Cobertura completa de tests (137 tests pasando)');
-  console.log('  • Preparado para futuras extensiones');
+  // Ejemplo 7: Filtro de stock usando Builder
+  console.log('\n7️⃣ Filtrar solo productos en stock (Builder):');
+  const inStockFilter = ProductFilter.builder()
+    .withInStockOnly()
+    .build();
+  const inStockProducts = productService.filterProducts(inStockFilter);
+  inStockProducts.forEach(product => {
+    const categories = product.categories.join(', ');
+    console.log(`  ✅ ${product.name} - €${product.price} [${categories}]`);
+  });
+
+  // Ejemplo 8: Combinación compleja usando Builder
+  console.log('\n8️⃣ Filtrar comida en stock (Builder + Chain):');
+  const foodInStockFilter = ProductFilter.builder()
+    .withCategories(['food'])
+    .withInStockOnly()
+    .build();
+  const foodInStockProducts = productService.filterProducts(foodInStockFilter);
+  foodInStockProducts.forEach(product => {
+    console.log(`  ✅ ${product.name} - €${product.price}`);
+  });
+
+  // Ejemplo 9: Builder con múltiples categorías
+  console.log('\n9️⃣ Builder añadiendo categorías una por una:');
+  const multiCategoryFilter = ProductFilter.builder()
+    .withCategory('food')
+    .withCategory('clothes')
+    .build();
+  const multiCategoryProducts = productService.filterProducts(multiCategoryFilter);
+  multiCategoryProducts.forEach(product => {
+    const stockStatus = product.hasStock ? '✅' : '❌';
+    const categories = product.categories.join(', ');
+    console.log(`  ${stockStatus} ${product.name} - €${product.price} [${categories}]`);
+  });
+
+  console.log('\n🎯 Patrones implementados:');
+  console.log('  📐 Builder Pattern:');
+  console.log('    • ProductFilterBuilder con métodos fluidos');
+  console.log('    • Construcción paso a paso de filtros complejos');
+  console.log('    • Métodos withCategories(), withPrice(), withStock()');
+  console.log('  🔗 Chain/Strategy Pattern:');
+  console.log('    • FilterCriterion interface para estrategias');
+  console.log('    • CategoryFilterCriterion, PriceFilterCriterion, StockFilterCriterion');
+  console.log('    • Cadena de criterios aplicados en ProductFilter.matches()');
+  console.log('  ✨ Características:');
+  console.log('    • Filtrado por categoría individual o múltiple');
+  console.log('    • Filtrado por rango de precios');
+  console.log('    • Filtrado por disponibilidad de stock');
+  console.log('    • Ordenamiento automático: productos con stock primero');
+  console.log('    • Arquitectura simple sin capas DDD');
 }
 
-// Ejecutar la demostración
 if (require.main === module) {
   main().catch(console.error);
 }
